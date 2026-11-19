@@ -29,7 +29,7 @@ public class OpenZip {
         Optional<ArchiveFormat> quick = quickFormat(args).filter(format -> namesExistingPath(args));
         if (quick.isPresent()) {
             Window window = new Window(new WindowOptions("OpenZip").setDimensions(QuickCompress.WIDTH, QuickCompress.HEIGHT)
-                    .setIconPath(icon()).setResizable(false));
+                    .setIconPath(icon()).setResizable(false).setSplashEnabled(false));
             QuickCompress job = new QuickCompress(window, quick.get());
             window.hide();
             Engine.onOpenFiles(job::start);
