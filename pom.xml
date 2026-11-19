@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>me.piitex.openzip</groupId>
+    <artifactId>OpenZip</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <name>OpenZip</name>
+    <description>A free, cross-platform archive utility built on RenGL.</description>
+
+    <properties>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <rengl.version>0.1.1</rengl.version>
+        <commons-compress.version>1.28.0</commons-compress.version>
+        <xz.version>1.10</xz.version>
+        <zip4j.version>2.11.5</zip4j.version>
+        <sevenzip.version>23.01-2.2</sevenzip.version>
+        <junit.version>5.10.2</junit.version>
+        <openzip.main>me.piitex.openzip.OpenZip</openzip.main>
+        <!-- rengl.natives: the RenGL natives artifact (rengl-natives-NAME) for the machine building this. Set by the OS profiles below. -->
+        <rengl.natives>linux</rengl.natives>
+        <!-- JVM arguments for the tests. No test opens a window, so none needs -XstartOnFirstThread, and keeping it out of the
+             profiles means that selecting every profile (to package for all platforms) can't hand it to a Windows or Linux JVM. -->
+        <openzip.jvmargs>--enable-native-access=ALL-UNNAMED --sun-misc-unsafe-memory-access=deny</openzip.jvmargs>
+        <!-- The one argument exec:exec adds for the first thread. Only macOS has the real flag: the JVM elsewhere rejects it. -->
+        <openzip.firstthread>-Dopenzip.firstthread=false</openzip.firstthread>
+    </properties>
+
+    <profiles>
+        <profile>
+            <id>macos-aarch64</id>
+            <activation><os><family>mac</family><arch>aarch64</arch></os></activation>
+            <properties>
+                <rengl.natives>macos-arm64</rengl.natives>
+                <openzip.firstthread>-XstartOnFirstThread</openzip.firstthread>
+            </properties>
+        </profile>
+        <profile>
+            <id>macos-x86_64</id>
+            <activation><os><family>mac</family><arch>x86_64</arch></os></activation>
+            <properties>
+                <rengl.natives>macos</rengl.natives>
+                <openzip.firstthread>-XstartOnFirstThread</openzip.firstthread>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows-amd64</id>
+            <activation><os><family>windows</family><arch>amd64</arch></os></activation>
+            <properties>
+                <rengl.natives>windows</rengl.natives>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows-aarch64</id>
+            <activation><os><family>windows</family><arch>aarch64</arch></os></activation>
+            <properties>
+                <rengl.natives>windows-arm64</rengl.natives>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-amd64</id>
+            <activation><os><family>unix</family><name>linux</name><arch>amd64</arch></os></activation>
+            <properties>
+                <rengl.natives>linux</rengl.natives>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux-aarch64</id>
+            <activation><os><family>unix</family><name>linux</name><arch>aarch64</arch></os></activation>
+            <properties>
+                <rengl.natives>linux-arm64</rengl.natives>
+            </properties>
+        </profile>
+    </profiles>
+
+    <dependencies>
+        <!-- Only the core: a window and the UI toolkit. The whole-engine RenGL artifact would add audio, video, Vulkan, 3D and
+             search libraries that an archive tool never touches. -->
+        <dependency>
+            <groupId>io.github.piitex</groupId>
+            <artifactId>rengl-core</artifactId>
+            <version>${rengl.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.piitex</groupId>
+            <artifactId>rengl-natives-${rengl.natives}</artifactId>
+            <version>${rengl.version}</version>
+        </dependency>
+
+        <!-- Archive formats. The JDK's own zip classes drop Unix permissions and symlinks; Commons Compress keeps them. -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${commons-compress.version}</version>
+        </dependency>
+        <!-- Needed by Commons Compress for .xz and .7z (LZMA). -->
+        <dependency>
+            <groupId>org.tukaani</groupId>
+            <artifactId>xz</artifactId>
+            <version>${xz.version}</version>
+        </dependency>
+
+        <!-- Encrypted zips (AES-256 and the old ZipCrypto). Commons Compress can't read or write either. -->
+        <dependency>
+            <groupId>net.lingala.zip4j</groupId>
+            <artifactId>zip4j</artifactId>
+            <version>${zip4j.version}</version>
+        </dependency>
+
+        <!-- Reads .rar (RAR 3, 4 and 5, with passwords and solid archives). Extract only: RAR can't be written by anyone but
+             RARLAB. The natives are unpacked from the jar at first use. LGPL, plus the unRAR restriction. -->
+        <dependency>
+            <groupId>net.sf.sevenzipjbinding</groupId>
+            <artifactId>sevenzipjbinding</artifactId>
+            <version>${sevenzip.version}</version>
+        </dependency>
+        <!-- Every platform's natives (about 2 MB each), so each image the packager builds can read .rar, whichever computer
+             builds it. The library alone would use whichever jar is first on the class path, so RarSource names the running
+             platform itself. -->
+        <dependency>
+            <groupId>net.sf.sevenzipjbinding</groupId>
+            <artifactId>sevenzipjbinding-windows-amd64</artifactId>
+            <version>${sevenzip.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.sevenzipjbinding</groupId>
+            <artifactId>sevenzipjbinding-linux-amd64</artifactId>
+            <version>${sevenzip.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.sevenzipjbinding</groupId>
+            <artifactId>sevenzipjbinding-linux-arm64</artifactId>
+            <version>${sevenzip.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.sf.sevenzipjbinding</groupId>
+            <artifactId>sevenzipjbinding-mac</artifactId>
+            <version>${sevenzip.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+                <configuration>
+                    <argLine>${openzip.jvmargs}</argLine>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+            <!-- ./mvnw compile exec:exec to run the app with the right JVM flags. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <executable>java</executable>
+                    <arguments>
+                        <argument>${openzip.firstthread}</argument>
+                        <argument>--enable-native-access=ALL-UNNAMED</argument>
+                        <argument>--sun-misc-unsafe-memory-access=deny</argument>
+                        <argument>-classpath</argument>
+                        <classpath/>
+                        <argument>${openzip.main}</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <repositories>
+        <repository>
+            <id>compose-dev</id>
+            <url>https://redirector.kotlinlang.org/maven/compose-dev</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+    </repositories>
+</project>
